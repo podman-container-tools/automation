@@ -131,7 +131,13 @@ virt-resize --expand "$ROOTFS_DISK_PARTITION" "$image_path" "$resize_image_path"
 mv "$resize_image_path" "$image_path"
 
 # Upload and run our install script in the guest.
-virt-customize --smp 2 --memsize 2560 --upload "$SOURCE_DIR/$install_script:/tmp/install.sh" --run-command "chmod +x /tmp/install.sh && /tmp/install.sh $BUILD_NAME" -a "$image_path"
+virt-customize --smp 2 --memsize 2560 \
+    --upload "$SOURCE_DIR/$install_script:/tmp/install.sh" \
+    --mkdir /var/cache/local-registry \
+    --upload "$SOURCE_DIR/local-cache-registry:/var/cache/local-registry/local-cache-registry" \
+    --run-command "chmod +x /tmp/install.sh && /tmp/install.sh $BUILD_NAME" \
+    --run-command "chmod +x /var/cache/local-registry/local-cache-registry && /var/cache/local-registry/local-cache-registry initialize" \
+    -a "$image_path"
 
 # virt-customize logs all output to /tmp/builder.log
 echo "Build logs:"
