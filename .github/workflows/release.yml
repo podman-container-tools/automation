@@ -26,8 +26,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ github.ref }}
+          REPO: ${{ github.repository }}
         run: |
-            gh release create "$VERSION" \
+            gh --repo "$REPO" \
+            release create "$VERSION" \
             -t "$VERSION" \
             --verify-tag \
             $(find . -type f)
