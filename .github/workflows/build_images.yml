@@ -7,9 +7,10 @@ permissions: {}
 
 jobs:
   build:
-    runs-on: oracle-vm-2cpu-8gb-x86-64
+    # use a larger runner in hope of better network speeds
+    runs-on: oracle-vm-16cpu-64gb-x86-64
     name: "${{ matrix.distro }}"
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -40,6 +41,8 @@ jobs:
           # libvirt odes not work since it is not running inside the container
           LIBGUESTFS_BACKEND: direct
           DISTRO: "${{ matrix.distro }}"
+          VM_CORES: 8
+          VM_MEMORY: 32768
 
       - name: Upload image as artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1

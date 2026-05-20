@@ -34,7 +34,8 @@ function verify_debian() {
     )
 }
 
-
+VM_CORES=${VM_CORES:-2}
+VM_MEMORY=${VM_MEMORY:-2560}
 
 BUILD_NAME="$1"
 FEDORA_RELEASE_VERSION=""
@@ -141,7 +142,7 @@ git clone https://github.com/containers/netavark/ "$nv_checkout"
 )
 
 # Upload and run our install script in the guest.
-virt-customize --smp 2 --memsize 2560 \
+virt-customize --smp ${VM_CORES} --memsize ${VM_MEMORY} \
     --upload "$SOURCE_DIR/$install_script:/tmp/install.sh" \
     --mkdir /var/cache/local-registry \
     --upload "$SOURCE_DIR/local-cache-registry:/var/cache/local-registry/local-cache-registry" \

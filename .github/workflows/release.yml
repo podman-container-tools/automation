@@ -14,8 +14,9 @@ jobs:
 
   create-release:
     # use a larger runner in hope of better network speeds
-    runs-on: oracle-vm-8cpu-32gb-x86-64
+    runs-on: oracle-vm-16cpu-64gb-x86-64
     needs: [build-images]
+    timeout-minutes: 60
     permissions:
       contents: write
     steps:
