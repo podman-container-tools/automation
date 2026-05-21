@@ -61,27 +61,28 @@ runs:
           -pubout -outform DER 2>/dev/null | base64 -w0)"
 
         # 3. Exchange the GitHub JWT for an OCI User Principal Session Token.
-        #    Do not use curl -f here so we can see the error body on failure.
-        HTTP_STATUS=0
-        UPST_RESPONSE="$(curl -sSL -o /tmp/upst-body.txt -w '%{http_code}' \
+        #    IDCS confidential apps allow jwt-bearer grant (RFC 7523); adding
+        #    requested_token_type=oci-upst + public_key transforms the response
+        #    into a UPST bound to our ephemeral keypair (via IdentityPropagationTrust).
+        STATUS="$(curl -sSL -o /tmp/upst-body.txt -w '%{http_code}' \
           -u "${OCI_CLIENT_ID}:${OCI_CLIENT_SECRET}" \
           -H 'Content-Type: application/x-www-form-urlencoded' \
-          -d 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' \
+          -d 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer' \
           -d 'requested_token_type=urn:oci:token-type:oci-upst' \
-          -d 'subject_token_type=jwt' \
           -d "public_key=${PUBKEY_B64}" \
-          --data-urlencode "subject_token=${GH_JWT}" \
-          "${OCI_DOMAIN_URL%/}/oauth2/v1/token")" || HTTP_STATUS="$?"
-        echo "token endpoint HTTP status: ${UPST_RESPONSE}"
-        if [ "${UPST_RESPONSE}" != "200" ]; then
+          --data-urlencode "assertion=${GH_JWT}" \
+          "${OCI_DOMAIN_URL%/}/oauth2/v1/token")"
+        echo "token endpoint HTTP status: ${STATUS}"
+        if [ "${STATUS}" != "200" ]; then
           echo "Token exchange failed. Response body:" >&2
           cat /tmp/upst-body.txt >&2
           echo >&2
           exit 1
         fi
-        UPST="$(jq -r .token /tmp/upst-body.txt)"
-        if [ -z "$UPST" ] || [ "$UPST" = "null" ]; then
-          echo "Token endpoint returned 200 but no .token field. Body:" >&2
+        # IDCS returns the UPST in either .token (RFC 8693) or .access_token.
+        UPST="$(jq -r '.token // .access_token // empty' /tmp/upst-body.txt)"
+        if [ -z "$UPST" ]; then
+          echo "Token endpoint returned 200 but no token field. Body:" >&2
           cat /tmp/upst-body.txt >&2
           exit 1
         fi
