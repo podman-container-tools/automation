@@ -19,17 +19,33 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: write
+      id-token: write
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_DOMAIN_URL: ${{ secrets.OCI_DOMAIN_URL }}
+      OCI_CLIENT_ID: ${{ secrets.OCI_CLIENT_ID }}
+      OCI_CLIENT_SECRET: ${{ secrets.OCI_CLIENT_SECRET }}
+      OCI_TARGET_USER_OCID: ${{ secrets.OCI_TARGET_USER_OCID }}
+      OCI_REGION: ${{ vars.OCI_REGION }}
     steps:
+      - name: Checkout (for the composite action)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
       - name: Download all artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+
+      - name: Upload images to OCI Object Storage
+        uses: ./.github/actions/oci-oidc-upload
+        with:
+          prefix: releases/${{ github.ref_name }}/
+
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
-            gh --repo "$REPO" \
+          gh --repo "$REPO" \
             release create "$VERSION" \
             -t "$VERSION" \
-            --verify-tag \
-            $(find . -type f)
+            --verify-tag

@@ -1,0 +1,124 @@
+name: OCI OIDC Upload
+description: |
+  Authenticate to Oracle Cloud Infrastructure via GitHub OIDC (no long-lived
+  API keys) and upload every .zst file in the current directory tree to the
+  podman-ci-vm-images Object Storage bucket under the given prefix.
+
+  Expects the following env vars to be set by the caller (typically at job
+  level, sourced from secrets/variables):
+    OCI_TENANCY_OCID        secret  tenancy OCID
+    OCI_DOMAIN_URL          secret  identity domain base URL
+    OCI_CLIENT_ID           secret  confidential app client ID (also OIDC audience)
+    OCI_CLIENT_SECRET       secret  confidential app client secret
+    OCI_TARGET_USER_OCID    secret  OCI user that the UPST impersonates
+    OCI_REGION              var     e.g. us-phoenix-1
+
+  Requires the calling job to declare `permissions: id-token: write`.
+
+inputs:
+  prefix:
+    description: >-
+      Object name prefix under the bucket (trailing slash required).
+      Each uploaded file is named "<prefix><basename>".
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install OCI CLI
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v oci >/dev/null 2>&1; then
+          curl -fsSL https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh \
+            -o /tmp/install-oci-cli.sh
+          bash /tmp/install-oci-cli.sh \
+            --accept-all-defaults \
+            --install-dir "$HOME/lib/oracle-cli" \
+            --exec-dir "$HOME/bin"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+        fi
+
+    - name: Authenticate to OCI via GitHub OIDC
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # 1. Mint a GitHub OIDC JWT scoped to the OCI confidential app.
+        GH_JWT_RAW="$(curl -fsSL \
+          -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+          "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OCI_CLIENT_ID}")"
+        GH_JWT="$(printf '%s' "$GH_JWT_RAW" | jq -r .value)"
+
+        # 2. Generate an ephemeral RSA keypair. OCI binds the UPST to this
+        #    public key; the CLI signs subsequent calls with the private key.
+        mkdir -p "$HOME/.oci/sessions/github"
+        chmod 700 "$HOME/.oci/sessions/github"
+        openssl genrsa -out "$HOME/.oci/sessions/github/oci_api_key.pem" 2048
+        chmod 600 "$HOME/.oci/sessions/github/oci_api_key.pem"
+        PUBKEY_B64="$(openssl rsa \
+          -in "$HOME/.oci/sessions/github/oci_api_key.pem" \
+          -pubout -outform DER 2>/dev/null | base64 -w0)"
+
+        # 3. Exchange the GitHub JWT for an OCI User Principal Session Token.
+        UPST_RESPONSE="$(curl -fsSL \
+          -u "${OCI_CLIENT_ID}:${OCI_CLIENT_SECRET}" \
+          -H 'Content-Type: application/x-www-form-urlencoded' \
+          -d 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' \
+          -d 'requested_token_type=urn:oci:token-type:oci-upst' \
+          -d 'subject_token_type=jwt' \
+          -d "public_key=${PUBKEY_B64}" \
+          --data-urlencode "subject_token=${GH_JWT}" \
+          "${OCI_DOMAIN_URL%/}/oauth2/v1/token")"
+        UPST="$(printf '%s' "$UPST_RESPONSE" | jq -r .token)"
+        if [ -z "$UPST" ] || [ "$UPST" = "null" ]; then
+          echo "Failed to obtain UPST from OCI token endpoint." >&2
+          printf '%s' "$UPST_RESPONSE" | jq -r '. | {error, error_description}' >&2 || true
+          exit 1
+        fi
+        printf '%s' "$UPST" > "$HOME/.oci/sessions/github/token"
+        chmod 600 "$HOME/.oci/sessions/github/token"
+
+        # 4. Write an OCI CLI config that uses the UPST + private key.
+        printf '[DEFAULT]\ntenancy=%s\nregion=%s\nuser=%s\nkey_file=%s\nsecurity_token_file=%s\n' \
+          "$OCI_TENANCY_OCID" \
+          "$OCI_REGION" \
+          "$OCI_TARGET_USER_OCID" \
+          "$HOME/.oci/sessions/github/oci_api_key.pem" \
+          "$HOME/.oci/sessions/github/token" \
+          > "$HOME/.oci/config"
+        chmod 600 "$HOME/.oci/config"
+
+        # 5. Discover the Object Storage namespace from the tenancy and export
+        #    it for later steps. (Saves the caller from having to configure it.)
+        OCI_NAMESPACE="$(oci --auth security_token os ns get --query data --raw-output)"
+        echo "OCI_NAMESPACE=${OCI_NAMESPACE}" >> "$GITHUB_ENV"
+
+    - name: Upload to OCI Object Storage
+      shell: bash
+      env:
+        PREFIX: ${{ inputs.prefix }}
+        BUCKET: podman-ci-vm-images
+      run: |
+        set -euo pipefail
+        case "$PREFIX" in
+          */) ;;
+          *) echo "prefix must end with '/' (got: $PREFIX)" >&2; exit 1 ;;
+        esac
+        found=0
+        while IFS= read -r -d '' f; do
+          base="$(basename "$f")"
+          echo "Uploading $f -> oci://${BUCKET}@${OCI_NAMESPACE}/${PREFIX}${base}"
+          oci --auth security_token os object put \
+            --namespace "$OCI_NAMESPACE" \
+            --bucket-name "$BUCKET" \
+            --name "${PREFIX}${base}" \
+            --file "$f" \
+            --force
+          found=$((found + 1))
+        done < <(find . -type f -name '*.zst' -print0)
+        if [ "$found" -eq 0 ]; then
+          echo "No .zst artifacts found to upload." >&2
+          exit 1
+        fi
+        echo "Uploaded $found artifact(s)."
