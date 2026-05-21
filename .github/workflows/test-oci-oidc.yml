@@ -5,6 +5,9 @@ name: Test OCI OIDC Upload
 # the release.yml flow has been proven to work end-to-end.
 
 on:
+  push:
+    branches:
+      - oci-oidc-upload
   workflow_dispatch:
 
 permissions:
