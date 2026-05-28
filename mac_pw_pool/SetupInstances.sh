@@ -341,7 +341,7 @@ for _dhentry in "${_dhstate[@]}"; do
             REGISTRATION_TOKEN=$(curl -sS -X POST \
                 -H "Authorization: token $GITHUB_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
-                https://api.github.com/orgs/podman-io/actions/runners/registration-token \
+                https://api.github.com/orgs/podman-container-tools/actions/runners/registration-token \
                 | jq -r '.token')
 
             if [[ -z "$REGISTRATION_TOKEN" ]] || [[ "$REGISTRATION_TOKEN" == "null" ]]; then

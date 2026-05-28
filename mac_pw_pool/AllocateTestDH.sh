@@ -19,7 +19,7 @@
 # * Appropriate `~/.aws/credentials` credentials are setup.
 # * The us-east-1 region is selected in `~/.aws/config`.
 # * The $GITHUB_TOKEN env. var. is set to a GitHub Personal Access Token
-#   with org:self-hosted-runners scope for the podman-io organization
+#   with org:self-hosted-runners scope for the podman-container-tools organization
 # * The local ssh-agent is able to supply the appropriate private key (stored in BW).
 
 set -eo pipefail

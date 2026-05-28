@@ -235,7 +235,7 @@ if [[ ! -r "$RUNNER_CONFIG_FILE" ]]; then
     sudo -u $PWUSER bash -c "cd $RUNNER_DIR && ./config.sh \
         --unattended \
         --replace \
-        --url https://github.com/podman-io \
+        --url https://github.com/podman-container-tools \
         --token $REGISTRATION_TOKEN \
         --name $PWNAME \
         --runnergroup mac-pool \
