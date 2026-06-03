@@ -14,3 +14,8 @@ permissions: {}
 jobs:
   build-images:
     uses: ./.github/workflows/build_images.yml
+
+  build-container-images:
+    uses: ./.github/workflows/build_container_images.yml
+    with:
+      tag: pr-${{ github.event.pull_request.number }}

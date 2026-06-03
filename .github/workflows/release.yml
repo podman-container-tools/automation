@@ -12,6 +12,16 @@ jobs:
   build-images:
     uses: ./.github/workflows/build_images.yml
 
+  build-container-images:
+    uses: ./.github/workflows/build_container_images.yml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+    with:
+      push: true
+      tag: ${{ github.ref_name }}
+
   create-release:
     # use a larger runner in hope of better network speeds
     runs-on: oracle-vm-16cpu-64gb-x86-64

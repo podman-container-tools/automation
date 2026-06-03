@@ -1,0 +1,21 @@
+ARG BASE_NAME=fedora
+ARG BASE_TAG=latest
+FROM ${BASE_NAME}:${BASE_TAG}
+
+# Required to keep perl & other tooling happy
+ENV LC_ALL="C"
+
+COPY /packages.txt /root/
+RUN dnf -y update && \
+    dnf -y install $(sed -r -e '/^#/d' -e '/^$/d' /root/packages.txt) && \
+    dnf -y upgrade && \
+    dnf clean all
+
+ENV REG_REPO="https://github.com/docker/distribution.git" \
+    REG_COMMIT_SCHEMA1_ONLY="ec87e9b6971d831f0eff752ddb54fb64693e51cd" \
+    REG_COMMIT_SCHEMA1_SUPPORTED="4772604ae973031ab32dd9805a4bccf61d94909f" \
+    OSO_REPO="https://github.com/openshift/origin.git" \
+    OSO_TAG="v1.5.0-alpha.3"
+
+COPY /setup.sh /root/
+RUN bash /root/setup.sh
