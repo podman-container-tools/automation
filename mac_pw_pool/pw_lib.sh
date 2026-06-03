@@ -18,7 +18,7 @@ DH_PFX="MacM1"
 
 # Only manage dedicated hosts with the following tag & value
 DH_REQ_TAG="purpose"
-DH_REQ_VAL="prod"
+DH_REQ_VAL="mac-pool"
 
 # Path to file recording the most recent state of each dedicated host.
 # Format is simply one line per dedicated host, with it's name, instance id, start
