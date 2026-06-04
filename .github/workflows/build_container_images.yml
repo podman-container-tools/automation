@@ -31,11 +31,10 @@ jobs:
 
       - name: Log in to ghcr.io
         if: ${{ inputs.push }}
-        uses: redhat-actions/podman-login@4934294ad0449894bcd1e9f191899d7292469603 # v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$REGISTRY_PASSWORD" | podman login ghcr.io -u "$REGISTRY_USER" --password-stdin
 
       - name: Push image
         if: ${{ inputs.push }}

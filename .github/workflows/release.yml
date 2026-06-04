@@ -25,7 +25,7 @@ jobs:
   create-release:
     # use a larger runner in hope of better network speeds
     runs-on: cncf-ubuntu-16-64-x86
-    needs: [build-images]
+    needs: [build-images, build-container-images]
     timeout-minutes: 60
     permissions:
       contents: write
