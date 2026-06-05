@@ -63,7 +63,6 @@ TEMPLATE_NAME="${TEMPLATE_NAME:-GHA${DH_PFX}Runner}"
 SETUP_SCRIPT="$LIB_DIRPATH/setup.sh"
 SPOOL_SCRIPT="$LIB_DIRPATH/service_pool.sh"
 SHDWN_SCRIPT="$LIB_DIRPATH/shutdown.sh"
-CIENV_SCRIPT="$LIB_DIRPATH/ci_env.sh"
 CLEANUP_HOOK_SCRIPT="$LIB_DIRPATH/cleanup_hook.sh"
 
 # Set to 1 to enable debugging
