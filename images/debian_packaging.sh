@@ -115,6 +115,7 @@ INSTALL_PACKAGES=(\
     sudo
     time
     unzip
+    util-linux-extra
     vim
     wget
     xfsprogs
