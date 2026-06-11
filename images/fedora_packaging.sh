@@ -129,6 +129,7 @@ INSTALL_PACKAGES=(\
     rsync
     runc
     sed
+    sequoia-sq
     ShellCheck
     skopeo
     slirp4netns

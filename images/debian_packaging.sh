@@ -106,6 +106,7 @@ INSTALL_PACKAGES=(\
     rsync
     runc
     scons
+    sq
     skopeo
     slirp4netns
     socat
