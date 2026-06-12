@@ -125,6 +125,133 @@ fi
 
 # N/B: Assumes $DHSTATE represents reality
 msg "Operating on $n_inst_total instances from $(head -1 $DHSTATE)"
+
+# Ensure the runner group exists in GitHub Actions
+# Returns 0 on success, 1 on failure
+ensure_runner_group() {
+    local runner_group="$DH_REQ_VAL"
+
+    # Try to create the runner group (idempotent - 422 means it already exists)
+    local create_response=$(curl -sS -w "\n%{http_code}" -X POST \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Accept: application/vnd.github+json" \
+        "https://api.github.com/orgs/podman-container-tools/actions/runner-groups" \
+        -d "{\"name\":\"$runner_group\",\"visibility\":\"all\",\"allows_public_repositories\":true}")
+
+    local http_code=$(echo "$create_response" | tail -n1)
+    local response_body=$(echo "$create_response" | head -n-1)
+
+    if [[ "$http_code" == "201" ]]; then
+        msg "Created runner group '$runner_group' with public repository access"
+        return 0
+    elif [[ "$http_code" == "409" ]] || [[ "$http_code" == "422" ]]; then
+        # Group already exists - this is normal and expected on subsequent runs
+        # GitHub returns 409 (Conflict) for duplicate names
+        return 0
+    else
+        local error_msg=$(echo "$response_body" | jq -r '.message // "Unknown error"')
+        warn "Failed to ensure runner group '$runner_group' (HTTP $http_code): $error_msg"
+        return 1
+    fi
+}
+
+# Fetch all runners from GitHub API once for efficient lookups
+# Returns 0 on success, 1 on API failure
+# Populates global associative arrays: runner_ids, runner_groups, runner_statuses
+fetch_all_runners() {
+    # Get all runners for the organization
+    local runners_response=$(curl -sS -w "\n%{http_code}" -X GET \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Accept: application/vnd.github+json" \
+        "https://api.github.com/orgs/podman-container-tools/actions/runners?per_page=100")
+
+    local http_code=$(echo "$runners_response" | tail -n1)
+    local response_body=$(echo "$runners_response" | head -n-1)
+
+    if [[ "$http_code" != "200" ]]; then
+        local error_msg=$(echo "$response_body" | jq -r '.message // "Unknown error"')
+        warn "Failed to list runners (HTTP $http_code): $error_msg"
+        return 1
+    fi
+
+    # Parse all runners once into associative arrays for O(1) lookups
+    while IFS='|' read -r name id group status; do
+        runner_ids["$name"]="$id"
+        runner_groups["$name"]="$group"
+        runner_statuses["$name"]="$status"
+    done < <(echo "$response_body" | jq -r '.runners[]? | "\(.name)|\(.id)|\(.runner_group_name // "default")|\(.status)"')
+
+    return 0
+}
+
+# Check and fix runner group conflict for a specific runner
+# Args: $1 = runner_name
+# Returns 0 if safe to proceed, 1 if unresolvable conflict exists
+# See: https://github.com/actions/runner/issues/3585
+# The --replace flag ignores --runnergroup, so we must handle runners
+# that exist in different groups. We auto-remove offline ones as a workaround.
+check_runner_conflict() {
+    local runner_name="$1"
+    local target_group="$DH_REQ_VAL"
+
+    # Check if runner exists in GitHub
+    if [[ -z "${runner_ids[$runner_name]}" ]]; then
+        # Runner doesn't exist - safe to proceed with registration
+        return 0
+    fi
+
+    local runner_id="${runner_ids[$runner_name]}"
+    local existing_group="${runner_groups[$runner_name]}"
+    local runner_status="${runner_statuses[$runner_name]}"
+
+    # Check if in wrong group
+    if [[ "$existing_group" != "$target_group" ]]; then
+        if [[ "$runner_status" == "offline" ]]; then
+            msg "Removing offline runner '$runner_name' from wrong group '$existing_group'"
+            local delete_response=$(curl -sS -w "\n%{http_code}" -X DELETE \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/orgs/podman-container-tools/actions/runners/$runner_id")
+
+            local delete_code=$(echo "$delete_response" | tail -n1)
+            if [[ "$delete_code" == "204" ]]; then
+                msg "Successfully removed runner '$runner_name' (ID: $runner_id)"
+                # Update our cache to reflect deletion
+                unset runner_ids["$runner_name"]
+                unset runner_groups["$runner_name"]
+                unset runner_statuses["$runner_name"]
+                return 0
+            else
+                warn "Failed to remove runner '$runner_name' (HTTP $delete_code)"
+                return 1
+            fi
+        elif [[ "$runner_status" == "disabled" ]]; then
+            warn "Runner '$runner_name' is disabled in group '$existing_group' (target: '$target_group'). Remove manually or re-enable it."
+            return 1
+        else
+            warn "Runner '$runner_name' is $runner_status in group '$existing_group' (target: '$target_group')"
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+# Fetch all runners once before processing instances
+declare -A runner_ids
+declare -A runner_groups
+declare -A runner_statuses
+
+fetch_runner_success=true
+if ! fetch_all_runners; then
+    warn "Failed to fetch runners from GitHub API $(ctx 0). Skipping new instance setup."
+    fetch_runner_success=false
+fi
+
+# Ensure runner group exists before processing any instances
+ensure_runner_group || \
+    die "Failed to ensure runner group '$DH_REQ_VAL' exists $(ctx 0)."
+
 echo -e "# $(basename ${BASH_SOURCE[0]}) run $(date -u -Iseconds)\n#" > "$TEMPDIR/$(basename $PWSTATE)"
 
 # Previous instance state needed for some optional checks
@@ -173,6 +300,17 @@ for _dhentry in "${_dhstate[@]}"; do
     set_pw_status setup error
     set_pw_status listener error
     set_pw_status comment ""
+
+    # Check for runner group conflicts for this specific instance
+    # See: https://github.com/actions/runner/issues/3585
+    # The --replace flag ignores --runnergroup, so we must handle runners
+    # that exist in different groups. We auto-remove offline ones as a workaround.
+    if $fetch_runner_success; then
+        if ! check_runner_conflict "$name"; then
+            pwst_warn "Runner group conflict detected for '$name'. Skipping this instance."
+            continue
+        fi
+    fi
 
     if ! $AWS ec2 describe-instances --instance-ids $instance_id &> "$instoutput"; then
         pwst_warn "Could not query instance $instance_id $(ctx 0)."
@@ -293,6 +431,12 @@ for _dhentry in "${_dhstate[@]}"; do
     if ! $SSH ec2-user@$pub_dns test -r .setup.done; then
 
         if ! $SSH ec2-user@$pub_dns test -r .setup.started; then
+            # GitHub API is required for new instance setup (registration token)
+            if ! $fetch_runner_success; then
+                pwst_warn "Failed to fetch runners, skipping setup for new instance '$name'."
+                continue
+            fi
+
             if $SSH ec2-user@$pub_dns test -r setup.log; then
                 # Can be caused by operator flipping PWPoolReady value on instance for debugging
                 pwst_warn "Setup log found, prior executions may have failed $(ctx 0)."
