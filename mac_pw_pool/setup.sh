@@ -90,7 +90,7 @@ if [[ ! -x /usr/local/bin/gvproxy ]]; then
 
     brew_taps=(
         # Required to use upstream krunkit
-        slp/krun
+        libkrun/krun
     )
 
     brew_formulas=(
