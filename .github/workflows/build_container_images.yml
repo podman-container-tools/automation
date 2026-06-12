@@ -20,14 +20,23 @@ jobs:
       matrix:
         image:
           - "skopeo_cidev"
+          - "podman_cidev"
+        include:
+          - image: skopeo_cidev
+            context: container-images/skopeo_cidev
+            file: container-images/skopeo_cidev/Containerfile
+          - image: podman_cidev
+            context: .
+            file: container-images/podman_cidev/Containerfile
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ inputs.tag }}
-      CONTEXT: container-images/${{ matrix.image }}
+      CONTEXT: ${{ matrix.context }}
+      CONTAINERFILE: ${{ matrix.file }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Build image
-        run: podman build -t "$IMAGE" "$CONTEXT"
+        run: podman build -t "$IMAGE" -f "$CONTAINERFILE" "$CONTEXT"
 
       - name: Log in to ghcr.io
         if: ${{ inputs.push }}

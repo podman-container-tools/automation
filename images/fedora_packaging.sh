@@ -209,11 +209,13 @@ dnf install -y "${INSTALL_PACKAGES[@]}"
 # This may be due to activation of suggested/recommended dependency resolution.
 dnf update -y
 
-# Make /tmp tmpfs bigger, by default we only get 50%. Bump it to 75% so the tests have more storage.
-# Do not use 100% so we do not run out of memory for the process itself if tests start leaking big
-# files on /tmp.
-mkdir -p /etc/systemd/system/tmp.mount.d
-echo -e "[Mount]\nOptions=size=75%%,mode=1777\n" | $SUDO tee /etc/systemd/system/tmp.mount.d/override.conf
+if ! ((CONTAINER)); then
+    # Make /tmp tmpfs bigger, by default we only get 50%. Bump it to 75% so the tests have more storage.
+    # Do not use 100% so we do not run out of memory for the process itself if tests start leaking big
+    # files on /tmp.
+    mkdir -p /etc/systemd/system/tmp.mount.d
+    echo -e "[Mount]\nOptions=size=75%%,mode=1777\n" | $SUDO tee /etc/systemd/system/tmp.mount.d/override.conf
 
-# "Enabling cgroup management from containers"
-setsebool -P container_manage_cgroup true
+    # "Enabling cgroup management from containers"
+    setsebool -P container_manage_cgroup true
+fi

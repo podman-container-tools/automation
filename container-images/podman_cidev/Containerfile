@@ -1,0 +1,13 @@
+ARG BASE_NAME=fedora
+ARG BASE_TAG=latest
+ARG BUILD_NAME=fedora-current
+FROM ${BASE_NAME}:${BASE_TAG}
+ARG BUILD_NAME
+
+# Required to keep perl & other tooling happy
+ENV LC_ALL="C"
+
+COPY images/fedora_packaging.sh /root/fedora_packaging.sh
+RUN CONTAINER=1 bash /root/fedora_packaging.sh "${BUILD_NAME}" && \
+    dnf clean all && \
+    rm /root/fedora_packaging.sh
