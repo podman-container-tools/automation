@@ -88,6 +88,7 @@ INSTALL_PACKAGES=(\
     libcap-devel
     libffi-devel
     libgpg-error-devel
+    libkrunfw
     libmsi1
     libnet
     libnet-devel
