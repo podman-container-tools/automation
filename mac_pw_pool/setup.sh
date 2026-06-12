@@ -79,6 +79,11 @@ grep -q homebrew /etc/paths || \
 . /etc/profile
 
 msg "Installing podman-machine, testing, and CI deps. (~5-10m install time)"
+# Make brew non-interactive for automated setup
+export HOMEBREW_NO_ASK=1
+brew update
+brew trust aws/aws
+
 if [[ ! -x /usr/local/bin/gvproxy ]]; then
     declare -a brew_taps
     declare -a brew_formulas
@@ -112,6 +117,7 @@ if [[ ! -x /usr/local/bin/gvproxy ]]; then
 
     for brew_tap in "${brew_taps[@]}"; do
         brew tap $brew_tap
+        brew trust $brew_tap
     done
 
     brew install "${brew_formulas[@]}"
