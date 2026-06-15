@@ -96,6 +96,7 @@ declare -a IMAGELIST=(
     podman/stable:v5.6.2
     skopeo/stable:latest
     ubuntu:latest
+    registry.access.redhat.com/ubi10
 )
 
 # END   defaults
