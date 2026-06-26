@@ -43,13 +43,18 @@ die_if_empty() {
 [[ "$#" -ge 1 ]] || \
     die "Must be called with a 'label: value' string argument"
 
-echo "$1" | grep -i -q -E '^[a-z0-9]+:[ ]?[a-z0-9]+' || \
+echo "$1" | grep -i -q -E '^[a-z0-9]+:[ ]?[a-z0-9-]+$' || \
     die "First argument must be a string in the format 'name: value'. Not: '$1'"
 
 [[ -n "$REGISTRATION_TOKEN" ]] || \
     die "REGISTRATION_TOKEN environment variable is not set"
 
 msg "Configuring pool worker for '$1' tasks."
+
+# Extract the value part from "label: value" format for use as runner group
+RUNNER_GROUP=$(echo "$1" | sed -E 's/^[a-z0-9]+:[ ]?([a-z0-9-]+)$/\1/')
+[[ -n "$RUNNER_GROUP" ]] || \
+    die "Failed to extract runner group from argument '$1'"
 
 [[ ! -r "$COMPLETION_FILE" ]] || \
     die "Appears setup script already ran at '$(cat $COMPLETION_FILE)'"
@@ -242,7 +247,7 @@ if [[ ! -r "$RUNNER_CONFIG_FILE" ]]; then
         --url https://github.com/podman-container-tools \
         --token $REGISTRATION_TOKEN \
         --name $PWNAME \
-        --runnergroup mac-pool \
+        --runnergroup $RUNNER_GROUP \
         --work /Users/$PWUSER/ci"
 
     # Clear sensitive token from environment immediately after use

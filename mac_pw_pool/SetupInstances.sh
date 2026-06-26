@@ -15,6 +15,7 @@ set -eo pipefail
 
 # shellcheck source-path=SCRIPTDIR
 source $(dirname ${BASH_SOURCE[0]})/pw_lib.sh
+source $(dirname ${BASH_SOURCE[0]})/runner_api.sh
 
 # Update temporary-dir status file for instance $name
 # status type $1 and value $2.  Where status type is
@@ -125,6 +126,17 @@ fi
 
 # N/B: Assumes $DHSTATE represents reality
 msg "Operating on $n_inst_total instances from $(head -1 $DHSTATE)"
+
+
+# Create runner group before processing any instances
+create_runner_group || \
+    die "Failed to create runner group '$DH_REQ_VAL' $(ctx 0)."
+
+# Fetch all runners once before processing instances
+# Hard fail if GitHub API is unavailable - cannot safely provision runners without it
+fetch_all_runners || \
+    die "Cannot fetch runners from GitHub API - refusing to provision instances $(ctx 0)."
+
 echo -e "# $(basename ${BASH_SOURCE[0]}) run $(date -u -Iseconds)\n#" > "$TEMPDIR/$(basename $PWSTATE)"
 
 # Previous instance state needed for some optional checks
@@ -298,6 +310,15 @@ for _dhentry in "${_dhstate[@]}"; do
                 pwst_warn "Setup log found, prior executions may have failed $(ctx 0)."
             fi
 
+            # Check for runner group conflicts before starting setup
+            # See: https://github.com/actions/runner/issues/3585
+            # The --replace flag ignores --runnergroup, so we must handle runners
+            # that exist in different groups. We auto-remove offline ones as a workaround.
+            if ! check_runner_conflict "$name"; then
+                pwst_warn "Runner group conflict detected for '$name'. Skipping this instance."
+                continue
+            fi
+
             pwst_msg "Setting up new instance"
 
             # Ensure bash used for consistency && some ssh commands below
@@ -340,25 +361,8 @@ for _dhentry in "${_dhstate[@]}"; do
             fi
 
             pwst_msg "Obtaining runner registration token from GitHub."
-            # Get ephemeral registration token (1-hour expiry) from GitHub API
-            # This token is only used once during runner registration
-            api_response=$(curl -sS -w "\n%{http_code}" -X POST \
-                -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                https://api.github.com/orgs/podman-container-tools/actions/runners/registration-token)
-
-            http_code=$(echo "$api_response" | tail -n1)
-            response_body=$(echo "$api_response" | head -n-1)
-
-            if [[ "$http_code" != "201" ]]; then
-                error_msg=$(echo "$response_body" | jq -r '.message // "Unknown error"')
-                pwst_warn "GitHub API returned HTTP $http_code: $error_msg"
-                continue  # try again next loop
-            fi
-
-            REGISTRATION_TOKEN=$(echo "$response_body" | jq -r '.token')
-            if [[ -z "$REGISTRATION_TOKEN" ]] || [[ "$REGISTRATION_TOKEN" == "null" ]]; then
-                pwst_warn "Failed to extract token from GitHub API response"
+            if ! REGISTRATION_TOKEN=$(get_registration_token); then
+                pwst_warn "Failed to get registration token from GitHub API"
                 continue  # try again next loop
             fi
 
