@@ -74,7 +74,6 @@ INSTALL_PACKAGES=(\
     golang-google-protobuf
     gpgme
     gpgme-devel
-    grubby
     hostname
     httpd-tools
     iproute
