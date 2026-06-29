@@ -150,7 +150,7 @@ virt-customize --smp ${VM_CORES} --memsize ${VM_MEMORY} \
     --upload "$nv_checkout/bin/netavark:/usr/local/libexec/podman/netavark" \
     --run-command "chmod +x /usr/local/libexec/podman/netavark" \
     --run-command "chmod +x /tmp/install.sh && /tmp/install.sh $BUILD_NAME" \
-    --run-command "chmod +x /var/cache/local-registry/local-cache-registry && /var/cache/local-registry/local-cache-registry initialize" \
+    --run-command "mount -t cgroup2 none /sys/fs/cgroup && chmod +x /var/cache/local-registry/local-cache-registry && /var/cache/local-registry/local-cache-registry initialize" \
     -a "$image_path"
 
 # virt-customize logs all output to /tmp/builder.log
