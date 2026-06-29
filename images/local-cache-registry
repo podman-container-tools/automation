@@ -16,6 +16,8 @@
 #
 ME=$(basename $0)
 
+set -e
+
 ###############################################################################
 # BEGIN defaults
 
@@ -163,22 +165,6 @@ function podman() {
               "$@"
 }
 
-###############
-#  must_pass  #  Run a command quietly; abort with error on failure
-###############
-function must_pass() {
-    local log=${PODMAN_TMPROOT}/log
-
-    "$@" &> $log
-    if [ $? -ne 0 ]; then
-        echo "$ME: Command failed: $*" >&2
-        cat $log                       >&2
-
-        # If we ever get here, it's a given that the registry is not running.
-        exit 1
-    fi
-}
-
 ###################
 #  wait_for_port  #  Returns once port is available on localhost
 ###################
@@ -255,9 +241,6 @@ function do_initialize() {
         die "this script must be run as root"
     fi
 
-    # For the next few commands, die on any error
-    set -e
-
     mkdir -p ${PODMAN_REGISTRY_WORKDIR}
 
     # Copy of this script
@@ -286,7 +269,7 @@ function do_initialize() {
     # Generate that key and certificate that we just configured the
     # registry to use.
     mkdir -p /etc/local-registry && chmod 700 /etc/local-registry
-    must_pass openssl req -newkey rsa:4096 -nodes -sha256 -keyout /etc/local-registry/localhost.key -x509 -days 36525 -addext "subjectAltName = DNS:localhost, IP:127.0.0.1" -out /etc/local-registry/localhost.crt -subj "/CN=localhost"
+    openssl req -newkey rsa:4096 -nodes -sha256 -keyout /etc/local-registry/localhost.key -x509 -days 36525 -addext "subjectAltName = DNS:localhost, IP:127.0.0.1" -out /etc/local-registry/localhost.crt -subj "/CN=localhost"
     mkdir -p /etc/containers/certs.d/127.0.0.1:${REGISTRY_PORT}
     cp /etc/local-registry/localhost.crt /etc/containers/certs.d/127.0.0.1:${REGISTRY_PORT}/ca.crt
 
