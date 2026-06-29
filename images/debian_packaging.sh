@@ -39,7 +39,6 @@ INSTALL_PACKAGES=(\
     ca-certificates
     catatonit
     conmon
-    containernetworking-plugins
     criu
     crun
     dnsmasq
@@ -54,7 +53,6 @@ INSTALL_PACKAGES=(\
     go-md2man
     golang
     iproute2
-    iptables
     jq
     libaio-dev
     libapparmor-dev
@@ -108,7 +106,6 @@ INSTALL_PACKAGES=(\
     scons
     sq
     skopeo
-    slirp4netns
     socat
     libsqlite3-0
     libsqlite3-dev
