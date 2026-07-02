@@ -95,8 +95,7 @@ if [[ ! -x /usr/local/bin/gvproxy ]]; then
 
     brew_taps=(
         # Required to use upstream krunkit
-        # FIXME: krunkit 1.2.2 is broken, using temp fork that contains 1.2.1
-        ashley-cui/krun
+        libkrun/krun
     )
 
     brew_formulas=(
