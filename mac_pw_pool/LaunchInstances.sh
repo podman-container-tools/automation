@@ -4,7 +4,7 @@ set -eo pipefail
 
 # Script intended to be executed by humans (and eventually automation) to
 # ensure instances are launched from the current template version, on all
-# available Cirrus-CI Persistent Worker M1 Mac dedicated hosts.  These
+# available GitHub Actions self hosted runners on M1 Mac dedicated hosts.  These
 # dedicated host (slots) are selected at runtime based their possessing a
 # 'true' value for their `PWPoolReady` tag.  The script assumes:
 #

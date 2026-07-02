@@ -90,10 +90,10 @@ modargs=(
     "DH_PFX              $INST_NAME     $DH_PFX"
     # The default launch template name includes $DH_PFX, ensure the production template name is used.
     # N/B: The old/unmodified pw_lib.sh is still loaded for the running script
-    "TEMPLATE_NAME       $TEMPLATE_NAME Cirrus${DH_PFX}PWinstance"
+    "TEMPLATE_NAME       $TEMPLATE_NAME GHA${DH_PFX}Runner"
     # Permit developer to use instance for up to 3 days max (orphan vm cleaning process will nail it after that).
     "PW_MAX_HOURS        72             $PW_MAX_HOURS"
-    # Permit developer to execute as many Cirrus-CI tasks as they want w/o automatic shutdown.
+    # Permit developer to execute as many GHA jobs as they want w/o automatic shutdown.
     "PW_MAX_TASKS        9999           $PW_MAX_TASKS"
 )
 
@@ -170,7 +170,7 @@ done
 # At this point the script could call SetupInstances.sh in another loop
 # but it takes about 20-minutes to complete.  Also, the developer may
 # not need it, they may simply want to ssh into the instance to poke
-# around.  i.e. they don't need to run any Cirrus-CI jobs on the test
+# around.  i.e. they don't need to run any GHA jobs on the test
 # instance.
 warn "---"
 warn "NOT copying/running setup.sh to new instance (in case manual activities are desired)."
@@ -185,12 +185,13 @@ msg "Dropping you into a shell inside a temp. repo clone:
 ($TMP_CLONE_DIRPATH/$LIB_DIRNAME)"
 msg "---"
 msg "Once it finishes booting (5m), you may use './InstanceSSH.sh ${INST_NAME}-0'
-to access it.  Otherwise to fully setup the instance for Cirrus-CI, you need
+to access it.  Otherwise to fully setup the instance for GHA, you need
 to execute './SetupInstances.sh' repeatedly until the ${INST_NAME}-0 line in
 'pw_status.txt' includes the text 'complete alive'.  That process can take 20+
-minutes.  Once alive, you may then use Cirrus-CI to test against this specific
+minutes.  Once alive, you may then use GHA to test against this specific
 instance with any 'persistent_worker' task having a label of
-'$DH_REQ_TAG=$DH_REQ_VAL' set."
+'$DH_REQ_TAG=$DH_REQ_VAL' set. You can target this instance by opening a PR
+with a workflow that contains a job that runs-on: group: $DH_REQ_VAL"
 msg "---"
 warn "$w"
 

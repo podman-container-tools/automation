@@ -238,7 +238,7 @@ RUNNER_CONFIG_FILE="$RUNNER_DIR/.runner"
 if [[ ! -r "$RUNNER_CONFIG_FILE" ]]; then
     msg "Registering runner '$PWNAME'"
     # Configure the runner (but don't start it - service_pool.sh will do that)
-    # Work directory matches Cirrus pattern: /Users/$PWUSER/ci
+    # Work directory matches previous Cirrus pattern: /Users/$PWUSER/ci
     # --replace automatically removes any existing runner with the same name
     sudo -u $PWUSER bash -c "cd $RUNNER_DIR && ./config.sh \
         --unattended \

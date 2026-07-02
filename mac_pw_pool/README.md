@@ -1,4 +1,4 @@
-# Cirrus-CI persistent worker maintenance
+# GitHub Actions self-hosted runners
 
 These scripts are intended to be used from a repository clone,
 by cron, on an always-on cloud machine.  They make a lot of
@@ -10,14 +10,15 @@ detailed/specific information.
 
 * The `aws` binary present somewhere on `$PATH`.
 * Standard AWS `credentials` and `config` files exist under `~/.aws`
-  and set the region to `us-east-1`.
-* A copy of the ssh-key referenced by `CirrusMacM1PWinstance` launch template
+  and set the region to `us-east-1`. If you are debugging on your local machine,
+  and not running in prod, you can also use `aws login` with your own creds.
+* A copy of the ssh-key referenced by `GHAMacM1Runner` launch template
   under "Assumptions" below.
 * The ssh-key has been added to a running ssh-agent.
 * The running ssh-agent sh-compatible env. vars. are stored in
   `/run/user/$UID/ssh-agent.env`
-* The env. var. `POOLTOKEN` is set to the Cirrus-CI persistent worker pool
-  token value.
+* The env. var. `GITHUB_TOKEN` is set. This token should have read and write access
+to organization `podman-container-tools` self hosted runners.
 
 ## Assumptions
 
@@ -34,16 +35,47 @@ detailed/specific information.
   * Disabled "Instance auto-placement", "Host recovery", and "Host maintenance"
   * Quantity: 1
   * Tags: `automation=false`, `purpose=prod`, and `PWPoolReady=true`
-* The EC2 `CirrusMacM1PWinstance` instance-template exists and sets:
+* The EC2 `GHAMacM1Runner` instance-template exists and sets:
   * Shutdown-behavior: terminate
   * Same "key pair" referenced under `Prerequisites`
   * All other required instance parameters complete
   * A user-data script that shuts down the instance after 2 days.
 
+## Glossary
+
+### GitHub Actions and Cirrus Terms
+These scripts were originally written for Cirrus CI using Cirrus-specific terminology, and have since been migrated to GitHub Actions.
+Within the codebase, some variables and file names may still use Cirrus terms.
+
+| GitHub Actions     | Cirrus            | Description     |
+|--------------------|-------------------|-----------------|
+| Runner             | Worker            | A system used to execute a CI run                         |
+| Self-hosted Runner | Persistent Worker | A self-deployed and managed system used to execute CI runs|
+| Runner Group       | Worker Pool       | The set of runners available to run a CI job. <br> Note that in GHA, runners can exist without being part of a group. In this document, we mostly use "pool" to refer to the set of runners/instances that will be registered under our `mac-pool` runner group. |
+| Job                | Task              | A CI run                                                  |
+
+### AWS Terms
+* **Dedicated host**: A physical server with EC2 instance capacity
+* **Instance**: A bare metal system running on a dedicated host
+
+### Relationship Between Terms
+A dedicated host is provisioned on AWS, and an AWS instance is brought up on the dedicated host.
+The instance is set up with dependencies, including the GitHub Actions runner application. 
+The GitHub Actions runner is configured and added to a runner group. In this state, the instance is considered a "runner". 
+The runner listener is started, which waits for a job.
+A workflow within the repo's `.github/workflows` directory is triggered by an event such as a PR or a tag push.
+This workflow has a job that `runs-on` a specific runner group.
+GHA selects one of the registered runners within that runner group and sends the job to the runner.
+
+The **job** is run on the **instance** (configured as a **self-hosted runner** within a **runner group**) on the **dedicated host**.
+
+**Note**: In this document, we often use "runner" and "instance" interchangeably, as they most often mean a system that is configured to run a CI job.
+Similarly, we may use "pool" to refer to the set of instances that are properly set up to run jobs and are registered under the production (`mac-pool`) runner group.
+
 ## Operation (Theory)
 
 The goal is to maintain sufficient alive/running/working instances
-to service most Cirrus-CI tasks pointing at the pool.  This is
+to service most GitHub Actions jobs pointing at the pool.  This is
 best achieved with slower maintenance of hosts compared to setup
 of ready instances.  This is because hosts can be inaccessible for
 up to 2 hours, but instances come up in ~10-20m, ready to run tasks.
@@ -53,11 +85,11 @@ setting "false" or removing their `PWPoolReady=true` tag.  Otherwise,
 the pool should be maintained by installing the crontab lines
 indicated in the `Cron.sh` script.
 
-Cirrus-CI will assign tasks (specially) targeted at the pool, to an
-instance with a running listener (`cirrus worker run` process).  If
+GH actions will assign tasks that `runs-on: group: mac-pool`, to an
+instance with a running listener (`Runner.Listener` process).  If
 there are none, the task will queue forever (there might be a 24-hour
 timeout, I can't remember). From a PR perspective, there is little
-control over which instance you get.  It could easily be one where
+control over which instance you get. It could easily be one where
 a previous task barfed all over and rendered unusable.
 
 ## Initialization
@@ -83,12 +115,15 @@ Now the `Cron.sh` cron-job may be installed, enabled and started.
 
 Verifying changes to these scripts / cron-job must be done manually.
 To support this, every dedicated host and instance has a `purpose`
-tag, which must correspond to the value indicated in `pw_lib.sh`
-and in the target repo `.cirrus.yml`.  To test script and/or
-CI changes:
+tag, which must correspond to the value indicated in `pw_lib.sh`.
+This `purpose` tag will also be the name of the runner group in GitHub actions
+the runner is registered under. 
+To test script and/or CI changes:
+
 
 1. Make sure you have locally met all requirements spelled out in the
    header-comment of `AllocateTestDH.sh`.
+1. Set `DH_REQ_VAL` to a test tag.
 1. Execute `AllocateTestDH.sh`.  It will operate out of a temporary
    clone of the repository to prevent pushing required test-modifications
    upstream.
@@ -100,13 +135,16 @@ CI changes:
    instance should have a `setup.log` file in the `ec2-user` homedir.  There
    should also be `/private/tmp/<name>-worker.log` with entries from the
    pool listener process.
-1. To test CI changes against the test instance(s), push a PR that includes
-   `.cirrus.yml` changes to the task's `persistent_worker` dictionary's
-   `purpose` attribute.  Set the value the same as the tag in step 1.
+1. To test CI changes against the test instance(s), push a PR that sets a job's
+   `runs-on: group: ` field to the value of `DH_REQ_VAL` tag that you set. 
+   Example: `DH_REQ_VAL="testing"` -> `runs-on: group: testing`
 1. When you're done with all testing, terminate the instance.  Then wait
    a full 24-hours before "releasing" the dedicated host.  Both operations
    can be performed using the AWS EC2 WebUI.  Please remember to do the
    release step, as the $-clock continues to run while it's allocated.
+1. Remove the test runner group from the podman-container-tools org. This
+   The name of the runner group should be the value of `DH_REQ_VAL` that 
+   you set previously.
 
 Note: Instances are set to auto-terminate on shutdown.  They should
 self shutdown after 24-hours automatically.  After termination for
@@ -120,7 +158,7 @@ properly.
 * On each MacOS instance:
   * The pool listener process (running as the worker user) keeps a log under `/private/tmp`.  The
     file includes the registered name of the worker.  For example, on MacM1-7 you would find `/private/tmp/MacM1-7-worker.log`.
-    This log shows tasks taken on, completed, and any errors reported back from Cirrus-CI internals.
+    This log shows tasks taken on, completed, and any errors reported back from GitHub Actions internals.
   * In the ec2-user's home directory is a `setup.log` file.  This stores the output from executing
     `setup.sh`.  It also contains any warnings/errors from the (very important) `service_pool.sh` script - which should
     _always_ be running in the background.

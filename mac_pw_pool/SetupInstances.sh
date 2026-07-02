@@ -330,12 +330,7 @@ for _dhentry in "${_dhstate[@]}"; do
                 continue  # try again next loop
             fi
 
-            if ! $SCP $CIENV_SCRIPT ec2-user@$pub_dns:./; then
-                pwst_warn "Could not scp CI Env. script to instance $(ctx 0)."
-                continue  # try again next loop
-            fi
-
-            if ! $SSH ec2-user@$pub_dns chmod +x /var/tmp/*.sh ./ci_env.sh; then
+            if ! $SSH ec2-user@$pub_dns chmod +x /var/tmp/*.sh; then
                 pwst_warn "Could not chmod scripts $(ctx 0)."
                 continue  # try again next loop
             fi

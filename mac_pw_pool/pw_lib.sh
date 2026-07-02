@@ -57,13 +57,12 @@ SETUP_MAX_SECONDS=2400  # Typical time ~10 minutes, use 2x safety-factor.
 
 # Name of launch template. Current/default version will be used.
 # https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#LaunchTemplates:
-TEMPLATE_NAME="${TEMPLATE_NAME:-Cirrus${DH_PFX}PWinstance}"
+TEMPLATE_NAME="${TEMPLATE_NAME:-GHA${DH_PFX}Runner}"
 
 # Path to scripts to copy/execute on Darwin instances
 SETUP_SCRIPT="$LIB_DIRPATH/setup.sh"
 SPOOL_SCRIPT="$LIB_DIRPATH/service_pool.sh"
 SHDWN_SCRIPT="$LIB_DIRPATH/shutdown.sh"
-CIENV_SCRIPT="$LIB_DIRPATH/ci_env.sh"
 CLEANUP_HOOK_SCRIPT="$LIB_DIRPATH/cleanup_hook.sh"
 
 # Set to 1 to enable debugging
