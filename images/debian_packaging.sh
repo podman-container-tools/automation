@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# This script is called from debian_setup.sh and various Dockerfiles.
-# It's not intended to be used outside of those contexts.  It assumes the lib.sh
-# library has already been sourced, and that all "ground-up" package-related activity
-# needs to be done, including repository setup and initial update.
+# This script is called from build.sh, in the guest via virt-customize.
+# It's not intended to be used outside of that context.  It assumes that all
+# "ground-up" package-related activity needs to be done, including repository
+# setup and initial update.
 
 set -e
 
