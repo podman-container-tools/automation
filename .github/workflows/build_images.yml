@@ -42,10 +42,21 @@ jobs:
           VM_CORES: 8
           VM_MEMORY: 32768
 
+      - name: Generate checksum
+        working-directory: images/output
+        run: sha256sum "${{ matrix.distro }}.x86_64.qcow2.zst" > "${{ matrix.distro }}.x86_64.qcow2.zst.sha256"
+
       - name: Upload image as artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
         with:
           # FIXME update name here if we add aarch64 support
           path: "images/output/${{ matrix.distro }}.x86_64.qcow2.zst"
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload checksum as artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
+        with:
+          path: "images/output/${{ matrix.distro }}.x86_64.qcow2.zst.sha256"
           archive: false
           if-no-files-found: error

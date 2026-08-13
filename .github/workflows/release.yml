@@ -39,15 +39,21 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Verify downloads and build SHA256SUMS
+        run: |
+          cd artifacts
+          sha256sum -c *.sha256
+          cat *.sha256 > SHA256SUMS
+
       - name: Upload images to OCI Object Storage via PAR
         env:
           OCI_PAR_URL: ${{ secrets.OCI_PAR_URL }}
           VERSION: ${{ github.ref_name }}
-        run: ./scripts/upload-to-oci-par.sh artifacts/*.zst
+        run: ./scripts/upload-to-oci-par.sh artifacts/*.zst artifacts/SHA256SUMS
 
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
-        run: gh --repo "$REPO" release create "$VERSION" -t "$VERSION" --verify-tag
+        run: gh --repo "$REPO" release create "$VERSION" -t "$VERSION" --verify-tag artifacts/SHA256SUMS
