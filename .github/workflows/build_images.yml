@@ -20,10 +20,12 @@ jobs:
           - "fedora-rawhide"
           - "debian-sid"
     container:
-      image: fedora:latest
+      image: fedora:latest # zizmor: ignore[unpinned-images]
       options: --privileged
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install Dependencies
         # kernel is needed by guestfs-tools, git rust cargo protobuf-compiler are need to build netavark v2
         run: dnf install -y kernel kernel-core kernel-modules kernel-modules-core guestfs-tools sequoia-sq git rust cargo protobuf-compiler
