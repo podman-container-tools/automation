@@ -220,7 +220,7 @@ and/or use the pre-commit hook: https://github.com/renovatebot/pre-commit-hooks
     // In case AUTOMATION_RELEASE is listed in several files.
     {
       "matchManagers": ["custom.regex"],
-      "matchFileNames": [".github/workflows/*.yml"],
+      "matchDepNames": ["podman-container-tools/automation"],
       "groupName": "CI VM Image",
       // Renovate treats "20230120" as the version number, and
       // maxMajorIncrement defaults to 500 = 5 months;
