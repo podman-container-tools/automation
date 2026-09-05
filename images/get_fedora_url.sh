@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is intended to be called by the Makefile, not by
+# This script is intended to be called by build.sh, not by
 # humans.  This implies certain otherwise "odd" behaviors, such
 # as exiting with no std-output if there was an error.  It expects
 # to be called with three arguments:

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# This script is called from fedora_setup.sh and various Dockerfiles.
-# It's not intended to be used outside of those contexts.  It assumes the lib.sh
-# library has already been sourced, and that all "ground-up" package-related activity
+# This script is called from build.sh, in the guest via virt-customize, and from
+# container-images/podman_cidev/Containerfile.  It's not intended to be used outside
+# of those contexts.  It assumes that all "ground-up" package-related activity
 # needs to be done, including repository setup and initial update.
 
 set -e
@@ -20,7 +20,6 @@ BUILD_NAME="${1:?Build name is not defined, must be given as first arg}"
 # receive container-related dependency updates at the same time.  Since
 # the 'prior' release has the shortest support lifetime, keep it's behavior
 # stable by only using released updates.
-# shellcheck disable=SC2154
 if [[ "$BUILD_NAME" == "fedora-current" ]]; then
     echo "Enabling updates-testing repository for $BUILD_NAME"
     dnf install -y 'dnf-command(config-manager)'
@@ -211,7 +210,7 @@ if ! ((CONTAINER)); then
     # Do not use 100% so we do not run out of memory for the process itself if tests start leaking big
     # files on /tmp.
     mkdir -p /etc/systemd/system/tmp.mount.d
-    echo -e "[Mount]\nOptions=size=75%%,mode=1777\n" | $SUDO tee /etc/systemd/system/tmp.mount.d/override.conf
+    echo -e "[Mount]\nOptions=size=75%%,mode=1777\n" | tee /etc/systemd/system/tmp.mount.d/override.conf
 
     # "Enabling cgroup management from containers"
     setsebool -P container_manage_cgroup true
