@@ -73,7 +73,7 @@ declare -a IMAGELIST=(
     fedora/python-311:latest
     healthcheck:config-only
     hummingbird/git:latest
-    k8s-pause:3.5
+    k8s-pause:3.5-nowin
     podman_python:latest
     redis:alpine
     registry:2.8.2
@@ -272,6 +272,14 @@ function do_initialize() {
     openssl req -newkey rsa:4096 -nodes -sha256 -keyout /etc/local-registry/localhost.key -x509 -days 36525 -addext "subjectAltName = DNS:localhost, IP:127.0.0.1" -out /etc/local-registry/localhost.crt -subj "/CN=localhost"
     mkdir -p /etc/containers/certs.d/127.0.0.1:${REGISTRY_PORT}
     cp /etc/local-registry/localhost.crt /etc/containers/certs.d/127.0.0.1:${REGISTRY_PORT}/ca.crt
+
+    # The ubi10 image has sigstore attachments, add a config for the cache registry so we can push them there.
+    mkdir -p /etc/containers/registries.d
+    cat > /etc/containers/registries.d/localhost-cache-registry.yaml <<EOF
+docker:
+  127.0.0.1:${REGISTRY_PORT}:
+    use-sigstore-attachments: true
+EOF
 
     # Create a systemd unit file. Enable it (so it starts at boot)
     # and also start it --now.
