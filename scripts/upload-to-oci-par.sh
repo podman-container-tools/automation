@@ -14,7 +14,7 @@ for f in "$@"; do
     base="$(basename "$f")"
     target="${OCI_PAR_URL%/}/releases/${VERSION}/${base}"
     echo "PUT $f -> releases/${VERSION}/${base}"
-    curl --fail -sS \
+    curl --fail -sS --retry 5 --retry-all-errors \
         -H 'Content-Type: application/octet-stream' \
         --upload-file "$f" \
         "$target"

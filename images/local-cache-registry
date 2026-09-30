@@ -91,7 +91,6 @@ declare -a IMAGELIST=(
     testimage:20241011
     testimage:multiimage
     testimage@sha256:1385ce282f3a959d0d6baf45636efe686c1e14c3e7240eb31907436f7bc531fa
-    testdigest_v2s2:20200210
     testdigest_v2s2@sha256:755f4d90b3716e2bf57060d249e2cd61c9ac089b1233465c5c2cb2d7ee550fdb
     volume-plugin-test-img:20260807
     podman/stable:v5.3.1
