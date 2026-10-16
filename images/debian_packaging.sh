@@ -152,6 +152,7 @@ DOWNLOAD_PACKAGES=(\
     containerd.io
     docker-ce
     docker-ce-cli
+    docker-buildx-plugin # BuildKit backend for `docker build` in conformance CI
 )
 
 curl --fail --silent --location \
