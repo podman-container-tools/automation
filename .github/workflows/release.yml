@@ -10,10 +10,10 @@ permissions:
 
 jobs:
   build-images:
-    uses: ./.github/workflows/build_images.yml
+    uses: $/.github/workflows/build_images.yml
 
   build-container-images:
-    uses: ./.github/workflows/build_container_images.yml
+    uses: $/.github/workflows/build_container_images.yml
     permissions:
       contents: read
       packages: write
