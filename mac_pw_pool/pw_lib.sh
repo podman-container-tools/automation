@@ -26,7 +26,7 @@ DH_REQ_VAL="mac-pool"
 # with the name and details.  File is refreshed/overwritten each time script runs
 # without any fatal/uncaught command-errors.  Intended for reference by humans
 # and/or other tooling.
-DHSTATE="${PWSTATE:-$LIB_DIRPATH/dh_status.txt}"
+DHSTATE="${DHSTATE:-$LIB_DIRPATH/dh_status.txt}"
 
 # Similar to $DHSTATE but records the status of each instance.  Format is
 # instance name, setup status, listener status, # started tasks, # finished tasks,
