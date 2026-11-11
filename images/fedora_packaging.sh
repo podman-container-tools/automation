@@ -146,8 +146,8 @@ INSTALL_PACKAGES=(\
     zstd
 )
 
-# Rawhide also installs conmon-v3 alongside conmon.
-if [[ "$BUILD_NAME" == "fedora-rawhide" ]]; then
+# Install conmon-v3 alongside conmon for f45+.
+if [[ "$OS_RELEASE_VER" -ge 45 ]]; then
     INSTALL_PACKAGES+=(conmon-v3)
 fi
 
