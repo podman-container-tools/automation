@@ -6,8 +6,8 @@ SOURCE_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" && pwd )
 
 
 RAWHIDE_RELEASE=rawhide
-FEDORA_CURRENT_RELEASE=44
-PRIOR_FEDORA_RELEASE=43
+FEDORA_CURRENT_RELEASE=45
+PRIOR_FEDORA_RELEASE=44
 
 CURL="curl --location --fail --show-error --retry 5"
 
@@ -73,10 +73,6 @@ if [[ "$BUILD_NAME" =~ fedora ]]; then
     IMAGE_URL=$($SOURCE_DIR/get_fedora_url.sh image $ARCH $FEDORA_RELEASE_VERSION)
 
     ROOTFS_DISK_PARTITION=/dev/sda3
-    # FIXME remove this once upgrading stable to f45
-    if [[ "$BUILD_NAME" =~ prior ]]; then
-        ROOTFS_DISK_PARTITION=/dev/sda4
-    fi
 
     verify_function=verify_fedora
     install_script=fedora_packaging.sh
