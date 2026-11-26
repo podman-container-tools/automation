@@ -201,6 +201,9 @@ if ! ((CONTAINER)); then
         libguestfs-tools
         selinux-policy-devel
         policycoreutils
+        # By default the fedora image only comes with kernel-modules-core
+        # But we need the sctp module which is in kernel-modules for podman.
+        kernel-modules
     )
 fi
 
